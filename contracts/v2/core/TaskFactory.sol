@@ -31,6 +31,7 @@ contract TaskFactory is ITaskFactory, Ownable, ReentrancyGuard {
     address public immutable conditionOracle;
     address public immutable actionRegistry;
     address public immutable rewardManager;
+    address public globalRegistry;
 
     // Configuration
     uint256 public minTaskReward = 0.001 ether;
@@ -197,6 +198,20 @@ contract TaskFactory is ITaskFactory, Ownable, ReentrancyGuard {
             params.maxExecutions
         );
 
+        // Register task with GlobalRegistry
+        if (globalRegistry != address(0)) {
+            (bool success, ) = globalRegistry.call(
+                abi.encodeWithSignature(
+                    "registerTask(uint256,address,address,address)",
+                    taskId,
+                    taskCore,
+                    taskVault,
+                    msg.sender
+                )
+            );
+            require(success, "Registry registration failed");
+        }
+
         return (taskId, taskCore, taskVault);
     }
 
@@ -263,6 +278,11 @@ contract TaskFactory is ITaskFactory, Ownable, ReentrancyGuard {
         uint256 balance = address(this).balance;
         (bool success, ) = recipient.call{value: balance}("");
         require(success, "Transfer failed");
+    }
+
+    function setGlobalRegistry(address _globalRegistry) external onlyOwner {
+        require(_globalRegistry != address(0), "Invalid registry");
+        globalRegistry = _globalRegistry;
     }
 
     // ============ Receive Function ============
